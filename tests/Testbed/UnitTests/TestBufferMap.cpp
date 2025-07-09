@@ -8,7 +8,7 @@
 #include "Testbed.h"
 
 
-DEF_TEST( BufferMap )
+DEF_TEST(BufferMap)
 {
     // Create small buffer with initial data and read access
     const std::uint32_t buf1Initial[4] = { 0x12, 0x34, 0x56, 0x78 };
@@ -16,7 +16,7 @@ DEF_TEST( BufferMap )
 
     BufferDescriptor buf1Desc;
     {
-        buf1Desc.size           = 16;
+        buf1Desc.size = 16;
         buf1Desc.cpuAccessFlags = CPUAccessFlags::Read;
     }
     CREATE_BUFFER(buf1, buf1Desc, "buf1{size=16,r}", buf1Initial);
@@ -24,7 +24,7 @@ DEF_TEST( BufferMap )
     // Create small buffer with initial data and write access
     BufferDescriptor buf2Desc;
     {
-        buf2Desc.size           = 16;
+        buf2Desc.size = 16;
         buf2Desc.cpuAccessFlags = CPUAccessFlags::Write;
     }
     CREATE_BUFFER(buf2, buf2Desc, "buf2{size=16,w}", nullptr);
@@ -32,7 +32,7 @@ DEF_TEST( BufferMap )
     // Create larger buffer without initial data and write access
     BufferDescriptor buf3Desc;
     {
-        buf3Desc.size           = 2048;
+        buf3Desc.size = 2048;
         buf3Desc.cpuAccessFlags = CPUAccessFlags::ReadWrite;
     }
     CREATE_BUFFER(buf3, buf3Desc, "buf3{size=2048,rw}", nullptr);
@@ -140,6 +140,31 @@ DEF_TEST( BufferMap )
         }
     }
 
+    // Map buf3 and buf2 at the same time.
+    uint32_t* pBuf2Data = reinterpret_cast<uint32_t*>(renderer->MapBuffer(*buf2, CPUAccess::WriteDiscard));
+    uint32_t* pBuf3Data = reinterpret_cast<uint32_t*>(renderer->MapBuffer(*buf3, CPUAccess::WriteDiscard));
+
+    if (!pBuf2Data || !pBuf3Data)
+    {
+        Log::Errorf(
+            LLGL::Log::ColorFlags::StdError,
+            "Failed to map buffer 2 and buffer 3 to CPU at the same time (WriteDiscard)\n"
+        );
+        return TestResult::FailedErrors;
+    }
+
+    // edit both values at the same time.
+    for_range(i, sizeof(buf1Initial) / sizeof(buf1Initial[0]))
+    {
+        pBuf2Data[i] = buf1Initial[i];
+        pBuf3Data[i] = buf1Initial[i];
+    }
+
+    // unmap 2 and 3 at the same time.
+    renderer->UnmapBuffer(*buf2);
+    renderer->UnmapBuffer(*buf3);
+
+
     // Delete old buffers
     renderer->Release(*buf1);
     renderer->Release(*buf2);
@@ -147,5 +172,3 @@ DEF_TEST( BufferMap )
 
     return TestResult::Passed;
 }
-
-
